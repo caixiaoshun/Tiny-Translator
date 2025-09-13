@@ -1,17 +1,30 @@
-Tiny Translator：极简 Transformer 中文→英文翻译器
+<h1 align="center">Tiny Translator</h1>
+<p align="center">极简 Transformer 中文 → 英文翻译器</p>
 
-[![HF Model: caixiaoshun/tiny-translator-zh2en](https://img.shields.io/badge/HF%20Model-caixiaoshun%2Ftiny--translator--zh2en-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/caixiaoshun/tiny-translator-zh2en)
-[![Spaces: Tiny-Translator](https://img.shields.io/badge/Spaces-Tiny--Translator-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/spaces/caixiaoshun/Tiny-Translator)
-[![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](#%E7%8E%AF%E5%A2%83%E4%B8%8E%E5%AE%89%E8%A3%85)
-[![PyTorch 2.x](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white)](#%E6%A8%A1%E5%9E%8B%E8%AE%AD%E7%BB%83)
-[![Gradio 5.x](https://img.shields.io/badge/Gradio-5.x-FF7C00?logo=gradio&logoColor=white)](#%E7%BD%91%E9%A1%B5-demo%E6%94%AF%E6%8C%81%E5%A4%9A%E7%A7%8D%E8%A7%A3%E7%A0%81)
-[![GitHub Stars](https://img.shields.io/github/stars/caixiaoshun/Tiny-Translator?style=social)](https://github.com/caixiaoshun/Tiny-Translator)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/caixiaoshun/Tiny-Translator/pulls)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Issues](https://img.shields.io/github/issues/caixiaoshun/Tiny-Translator.svg)](https://github.com/caixiaoshun/Tiny-Translator/issues)
-[![Last Commit](https://img.shields.io/github/last-commit/caixiaoshun/Tiny-Translator.svg)](https://github.com/caixiaoshun/Tiny-Translator/commits/master)
+<p align="center">
+  <a href="https://huggingface.co/caixiaoshun/tiny-translator-zh2en">
+    <img alt="HF Model: caixiaoshun/tiny-translator-zh2en" src="https://img.shields.io/badge/HF%20Model-caixiaoshun%2Ftiny--translator--zh2en-FFD21E?logo=huggingface" />
+  </a>
+  <a href="https://huggingface.co/spaces/caixiaoshun/Tiny-Translator">
+    <img alt="Spaces: Tiny-Translator" src="https://img.shields.io/badge/Spaces-Tiny--Translator-FFD21E?logo=gradio" />
+  </a>
+  <a href="#%E7%8E%AF%E5%A2%83%E4%B8%8E%E5%AE%89%E8%A3%85">
+    <img alt="Python 3.11" src="https://img.shields.io/badge/Python-3.11-3776AB?logo=python" />
+  </a>
+  <a href="#%E6%A8%A1%E5%9E%8B%E8%AE%AD%E7%BB%83">
+    <img alt="PyTorch 2.x" src="https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch" />
+  </a>
+  <a href="#%E7%BD%91%E9%A1%B5-demo%E6%94%AF%E6%8C%81%E5%A4%9A%E7%A7%8D%E8%A7%A3%E7%A0%81">
+    <img alt="Gradio 5.x" src="https://img.shields.io/badge/Gradio-5.x-FF7C00?logo=gradio" />
+  </a>
+  <a href="LICENSE">
+    <img alt="License" src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" />
+  </a>
+  <br/>
+  简体中文 | <a href="README.en.md">English</a>
+</p>
 
-简体中文 | [English](README.en.md)
+<br/>
 
 ## 🌟 简介
 
