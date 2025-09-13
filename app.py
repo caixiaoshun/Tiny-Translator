@@ -1,11 +1,10 @@
 # app.py
 import os
-import subprocess
-import requests
 import gradio as gr
 import torch
 from tokenizers import Tokenizer
 from huggingface_hub import hf_hub_download
+
 from src.config import Config
 from src.model import TranslateModel
 
@@ -17,63 +16,16 @@ HF_TOKENIZER_FILE = os.getenv("TOKENIZER_FILE", "tokenizer.json")
 LOCAL_CKPT_PATH = os.getenv("LOCAL_CKPT_PATH", "checkpoints/translate-step=290000.ckpt")
 LOCAL_TOKENIZER_PATH = os.getenv("LOCAL_TOKENIZER_PATH", "checkpoints/tokenizer.json")
 
-# Optional: direct download URLs (useful when huggingface_hub is restricted or to force plain HTTP download)
-DIRECT_CKPT_URL = os.getenv(
-    "DIRECT_CKPT_URL",
-    "https://huggingface.co/caixiaoshun/tiny-translator-zh2en/resolve/main/translate-step%3D290000.ckpt",
-)
-DIRECT_TOKENIZER_URL = os.getenv(
-    "DIRECT_TOKENIZER_URL",
-    "https://huggingface.co/caixiaoshun/tiny-translator-zh2en/resolve/main/tokenizer.json",
-)
-
-
-def _ensure_dir(path: str):
-    d = os.path.dirname(path)
-    if d and not os.path.exists(d):
-        os.makedirs(d, exist_ok=True)
-
-
-def _download_with_wget(url: str, dest: str):
-    _ensure_dir(dest)
-    try:
-        subprocess.run(["wget", "-q", "-O", dest, url], check=True)
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
-
-
-def _download_with_requests(url: str, dest: str):
-    _ensure_dir(dest)
-    with requests.get(url, stream=True, timeout=60) as r:
-        r.raise_for_status()
-        tmp = dest + ".part"
-        with open(tmp, "wb") as f:
-            for chunk in r.iter_content(chunk_size=1024 * 1024):
-                if chunk:
-                    f.write(chunk)
-        os.replace(tmp, dest)
-
 
 class Inference:
     def __init__(self, config: Config, ckpt_path: str):
         self.config = config
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        # If local files are missing, try direct download to checkpoints/
-        if not os.path.exists(LOCAL_TOKENIZER_PATH):
-            ok = _download_with_wget(DIRECT_TOKENIZER_URL, LOCAL_TOKENIZER_PATH)
-            if not ok:
-                _download_with_requests(DIRECT_TOKENIZER_URL, LOCAL_TOKENIZER_PATH)
-
-        if not os.path.exists(LOCAL_CKPT_PATH):
-            ok = _download_with_wget(DIRECT_CKPT_URL, LOCAL_CKPT_PATH)
-            if not ok:
-                _download_with_requests(DIRECT_CKPT_URL, LOCAL_CKPT_PATH)
-
         # tokenizer (local-first, else hub)
         tokenizer_path = (
-            LOCAL_TOKENIZER_PATH if os.path.exists(LOCAL_TOKENIZER_PATH)
+            LOCAL_TOKENIZER_PATH
+            if os.path.exists(LOCAL_TOKENIZER_PATH)
             else hf_hub_download(repo_id=HF_REPO_ID, filename=HF_TOKENIZER_FILE)
         )
         self.tokenizer: Tokenizer = Tokenizer.from_file(tokenizer_path)
@@ -83,19 +35,19 @@ class Inference:
 
         # model
         self.model: TranslateModel = TranslateModel(config)
+
         # ckpt (local-first, else hub)
         ckpt_resolved = (
-            LOCAL_CKPT_PATH if os.path.exists(LOCAL_CKPT_PATH)
+            LOCAL_CKPT_PATH
+            if os.path.exists(LOCAL_CKPT_PATH)
             else hf_hub_download(repo_id=HF_REPO_ID, filename=HF_CKPT_FILE)
         )
         ckpt = torch.load(ckpt_resolved, map_location="cpu")["state_dict"]
-
         prefix = "net._orig_mod."
         state_dict = {}
         for k, v in ckpt.items():
             new_k = k[len(prefix):] if k.startswith(prefix) else k
             state_dict[new_k] = v
-
         self.model.load_state_dict(state_dict, strict=True)
         self.model.to(self.device).eval()
 
@@ -111,7 +63,6 @@ class Inference:
             tgt = torch.cat([tgt, index.unsqueeze(-1)], dim=-1)
             if self.id_EOS is not None and index.item() == self.id_EOS:
                 break
-
         return tgt.squeeze(0).tolist()
 
     @torch.no_grad()
@@ -125,21 +76,17 @@ class Inference:
             if temperature != 1.0:
                 logits = logits / temperature
             probs = torch.softmax(logits, dim=-1)
-
             sorted_probs, sorted_idx = torch.sort(probs, descending=True)
             cumsum = torch.cumsum(sorted_probs, dim=-1)
             mask = cumsum > top_p
             mask[..., 0] = False
             filtered = sorted_probs.masked_fill(mask, 0.0)
             filtered = filtered / filtered.sum(dim=-1, keepdim=True)
-
             next_sorted = torch.multinomial(filtered, 1)  # [1,1]
             next_id = sorted_idx.gather(-1, next_sorted)
             tgt = torch.cat([tgt, next_id], dim=-1)
-
             if self.id_EOS is not None and next_id.item() == self.id_EOS:
                 break
-
         return tgt.squeeze(0).tolist()
 
     @torch.no_grad()
@@ -148,7 +95,6 @@ class Inference:
         src_pad_mask = (src != self.id_PAD) if (self.id_PAD is not None) else None
 
         beams = [(torch.tensor([[self.id_SOS]], device=self.device), 0.0)]
-
         for _ in range(1, max_len):
             new_beams = []
             for seq, logp in beams:
@@ -169,10 +115,8 @@ class Inference:
 
             new_beams.sort(key=lambda x: score_fn(x[0], x[1]), reverse=True)
             beams = new_beams[:beam]
-
             if all(seq[0, -1].item() == self.id_EOS for seq, _ in beams if self.id_EOS is not None):
                 break
-
         return beams[0][0].squeeze(0).tolist()
 
     def postprocess(self, ids):
@@ -183,8 +127,16 @@ class Inference:
         text = self.tokenizer.decode(ids).strip()
         return text
 
-    def translate(self, text, method="greedy", max_tokens=128,
-                  top_p_val=0.9, temperature=1.0, beam=4, len_penalty=0.6):
+    def translate(
+        self,
+        text,
+        method="greedy",
+        max_tokens=128,
+        top_p_val=0.9,
+        temperature=1.0,
+        beam=4,
+        len_penalty=0.6,
+    ):
         src_ids = self.tokenizer.encode(text).ids
         max_len = min(max_tokens, self.config.max_len)
 
@@ -196,7 +148,6 @@ class Inference:
             ids = self.beam_search(src_ids, max_len, beam, len_penalty)
         else:
             return f"未知解码方法: {method}"
-
         return self.postprocess(ids)
 
 
